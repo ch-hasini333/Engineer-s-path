@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engineering Career Guide & AI Chat</title>
+    <style>
+        /* FIX: Increased padding-bottom to ensure content is visible above the fixed chat widget */
+        body { font-family: sans-serif; margin: 0; padding-bottom: 250px; background-color: #f7f7f7; }
+        .header { background-color: #004d99; color: white; padding: 20px 0; text-align: center; margin-bottom: 20px; }
+        .container { width: 90%; margin: 0 auto; max-width: 1200px; }
+        
+        /* Topic Buttons (Side Headings) */
+        .topic-buttons { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            padding: 10px 0; 
+            margin-bottom: 30px; 
+            border-bottom: 2px solid #ddd; 
+        }
+        .topic-button { 
+            padding: 10px 15px; 
+            background-color: #e9e9e9; border: 1px solid #ccc; border-radius: 5px;
+            text-decoration: none; color: #333; font-weight: 600; cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            flex-grow: 0; 
+        }
+        .topic-button:hover, .topic-button.active { background-color: #007bff; color: white; box-shadow: 0 2px 5px rgba(0, 123, 255, 0.4); }
+        
+        /* Content Display (Horizontal Card-like) */
+        .content-card { 
+            border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px;
+            padding: 30px; background-color: white; box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+        }
+        .card-heading { color: #004d99; font-size: 1.8em; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .card-content { margin-bottom: 20px; line-height: 1.7; }
+        .card-importance { font-weight: bold; color: #d9534f; margin-top: 10px; font-size: 1.1em; }
+        .card-link button { 
+            padding: 10px 20px; background-color: #28a745; color: white; 
+            border: none; border-radius: 5px; cursor: pointer; font-weight: 700;
+            transition: background-color 0.2s;
+        }
+        .card-link button:hover { background-color: #1e7e34; }
+
+        /* AI Chat Widget CSS (fixed position at the bottom right) */
+        /* FIX: Reduced height and width for less intrusion */
+        .ai-agent-widget { 
+            position: fixed; bottom: 20px; right: 20px; 
+            width: 320px; /* Reduced width */
+            height: 380px; /* Reduced height */
+            background-color: white; border: 1px solid #ccc; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+            z-index: 1000; display: flex; flex-direction: column; 
+            border-radius: 10px; overflow: hidden; 
+        }
+        #chat-window { flex-grow: 1; padding: 10px; overflow-y: auto; background-color: #f9f9f9; }
+        .message { margin-bottom: 10px; padding: 8px; border-radius: 5px; }
+        .user-message { background-color: #e1f5fe; text-align: right; }
+        .ai-message { background-color: #e0f7fa; }
+        .input-area { display: flex; padding: 10px; border-top: 1px solid #ccc; }
+        #user-input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 5px 0 0 5px; }
+        #send-button { padding: 8px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 0 5px 5px 0; }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="container">
+            <h1>Engineering Career Mastery Hub</h1>
+            <p class="lead">Select a topic below for detailed guidance and links.</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="topic-buttons" id="topicButtons">
+            {% for topic in career_data %}
+                <button 
+                    class="topic-button" 
+                    onclick="showTopic('{{ loop.index0 }}')" 
+                    id="btn-{{ loop.index0 }}"
+                >
+                    {{ topic.heading }}
+                </button>
+            {% endfor %}
+        </div>
+        
+        <div id="topicContent">
+            </div>
+
+    </div>
+
+    <div class="ai-agent-widget">
+        <div id="chat-window">
+            <div class="message ai-message">Hello! I am your AI assistant. Ask me anything about the career topics listed!</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Ask about DSA, GATE, or Internships...">
+            <button id="send-button" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Store Python data in a global JS variable (rendered by Jinja)
+        const CAREER_DATA = {{ career_data | tojson | safe }};
+        const topicContentDiv = document.getElementById('topicContent');
+        const topicButtons = document.getElementById('topicButtons').querySelectorAll('.topic-button');
+
+        // Function to display the selected topic's content
+        function showTopic(index) {
+            // Get the selected data object
+            const data = CAREER_DATA[index];
+
+            // Update button styles (active/inactive)
+            topicButtons.forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${index}`).classList.add('active');
+
+            // Generate the horizontal content card HTML
+            let htmlContent = `
+                <div class="content-card">
+                    <h2 class="card-heading">${data.heading}</h2>
+                    <p class="card-importance"><strong>Why it's important:</strong> ${data.importance}</p>
+                    <div class="card-content">${data.content}</div>
+            `;
+
+            // Only add the link if it exists and is not one of the removed topics
+            const removedTopics = ["Laptop", "Portfolio", "Projects", "Company Types", "Internships", "YouTube", "Civil Services", "Curriculum"];
+            if (data.link && !removedTopics.includes(data.heading)) {
+                htmlContent += `
+                    <a href="${data.link}" target="_blank" class="card-link">
+                        <button>
+                            Official Website / Resource Link
+                        </button>
+                    </a>
+                `;
+            }
+
+            htmlContent += `</div>`; // close content-card
+
+            // Insert the HTML into the content area
+            topicContentDiv.innerHTML = htmlContent;
+        }
+
+        // Initialize by showing the first topic and making its button active
+        if (CAREER_DATA.length > 0) {
+            showTopic(0);
+        }
+
+
+        // --- AI Chat Functionality (Interacts with Flask backend) ---
+        async function sendMessage() {
+            const inputElement = document.getElementById('user-input');
+            const chatWindow = document.getElementById('chat-window');
+            const userMessageText = inputElement.value.trim();
+
+            if (userMessageText === '') return;
+
+            // 1. Display user message immediately
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.classList.add('message', 'user-message');
+            userMessageDiv.textContent = userMessageText;
+            chatWindow.appendChild(userMessageDiv);
+
+            // Clear input field
+            inputElement.value = '';
+            chatWindow.scrollTop = chatWindow.scrollHeight; 
+
+            // 2. Send message to the Python Flask backend
+            try {
+                // Show a 'typing...' message
+                const loadingMessage = document.createElement('div');
+                loadingMessage.classList.add('message', 'ai-message');
+                loadingMessage.textContent = 'Assistant is typing...';
+                loadingMessage.id = 'loading-message';
+                chatWindow.appendChild(loadingMessage);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userMessageText }),
+                });
+
+                // Remove loading message
+                document.getElementById('loading-message')?.remove();
+
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const data = await response.json();
+                const aiResponseText = data.response;
+
+                // 3. Display AI response
+                const aiMessageDiv = document.createElement('div');
+                aiMessageDiv.classList.add('message', 'ai-message');
+                aiMessageDiv.textContent = aiResponseText;
+                chatWindow.appendChild(aiMessageDiv);
+                chatWindow.scrollTop = chatWindow.scrollHeight; 
+                
+            } catch (error) {
+                console.error('Error fetching AI response:', error);
+                // Remove loading message if still present
+                document.getElementById('loading-message')?.remove();
+                
+                const errorMessageDiv = document.createElement('div');
+                errorMessageDiv.classList.add('message', 'ai-message');
+                errorMessageDiv.textContent = 'Sorry, an error occurred in the AI response.';
+                chatWindow.appendChild(errorMessageDiv);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        }
+        
+        // Allow pressing Enter to send message
+        document.getElementById('user-input').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+
+</body>
+</html>
